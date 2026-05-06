@@ -937,6 +937,233 @@ function Relatorios({tick}) {
 }
 
 function Conferencia({tick}) {
+  const mesAtual = new Date().toISOString().slice(0,7);
+  const [mes, setMes] = useState(mesAtual);
+  const [xlsData, setXlsData] = useState(() => getStone());
+  const [fileName, setFileName] = useState(getLS("stoneName", ""));
+  const [erro, setErro] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const salesMes = db.sales.filter(s => (s.date || '').startsWith(mes));
+  const closingsMes = db.closings.filter(c => (c.date || '').startsWith(mes));
+  const xlsMes = Object.fromEntries(
+    Object.entries(xlsData || {}).filter(([d]) => (d || '').startsWith(mes))
+  );
+
+  const totalSys = salesMes.reduce((a,s)=>a+s.total,0);
+  const totalXls = Object.values(xlsMes).reduce((a,v)=>a+v,0);
+  const totalDecl = closingsMes.reduce((a,c)=>a+c.maquina,0);
+  const dates = [...new Set([
+    ...salesMes.map(s=>s.date),
+    ...closingsMes.map(c=>c.date),
+    ...Object.keys(xlsMes)
+  ])].sort();
+
+  function parseDate(raw) {
+    if(!raw) return null;
+    const s = String(raw).trim();
+    const a = s.replace(/-/g,'/').split('/');
+    if(a.length === 3) {
+      const p1=a[0].trim(), p2=a[1].trim(), p3=a[2].trim();
+      if(p3.length === 4) return p3+'-'+p2.padStart(2,'0')+'-'+p1.padStart(2,'0');
+      if(p1.length === 4) return p1+'-'+p2.padStart(2,'0')+'-'+p3.padStart(2,'0');
+    }
+    const num = parseInt(s);
+    if(!isNaN(num) && num > 40000 && num < 60000) {
+      const dt = new Date(Math.round((num - 25569)*86400*1000));
+      return dt.toISOString().slice(0,10);
+    }
+    return null;
+  }
+
+  function parseValor(raw) {
+    if(raw===undefined||raw===null||raw==='') return 0;
+    let s = String(raw).replace('R$','').replace('$','').trim();
+    const parts = s.split(',');
+    if(parts.length === 2) {
+      const intPart = parts[0].split('').filter(c=>c>='0'&&c<='9').join('');
+      const decPart = parts[1].split('').filter(c=>c>='0'&&c<='9').join('');
+      s = intPart + '.' + decPart;
+    } else {
+      s = s.split('').filter(c=>(c>='0'&&c<='9')||c==='.').join('');
+    }
+    return parseFloat(s)||0;
+  }
+
+  async function handleFile(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+    setLoading(true); setErro(''); setFileName(file.name);
+
+    function salvarResultado(result) {
+      if(Object.keys(result).length===0){
+        setErro('Nao foi possivel ler datas/valores. Verifique se o arquivo tem colunas DATA e TOTAL VENDIDO.');
+      } else {
+        const merged = {...(xlsData || {}), ...result};
+        setXlsData(merged);
+        saveStone(merged);
+        setLS("stoneName", file.name);
+      }
+      setLoading(false);
+    }
+
+    function processXLSX(XLSX, buf) {
+      const wb = XLSX.read(buf, {type:'array', cellDates:false});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true});
+      if(rows.length < 2) { setErro('Arquivo vazio ou sem dados.'); setLoading(false); return; }
+      const header = rows[0].map(h=>String(h||'').toUpperCase().trim());
+      let colData = header.findIndex(h=>h.includes('DATA')||h.includes('DATE'));
+      let colValor = header.findIndex(h=>
+        h.includes('TOTAL')||h.includes('VALOR')||h.includes('VENDIDO')||
+        h.includes('AMOUNT')||h.includes('BRUTO')||h.includes('LIQUIDO')
+      );
+      if(colData<0) colData=0;
+      if(colValor<0) colValor=1;
+      const result = {};
+      for(let i=1;i<rows.length;i++){
+        const row = rows[i];
+        if(!row || row.length===0) continue;
+        const dateStr = parseDate(row[colData]);
+        const valor = parseValor(row[colValor]);
+        if(!dateStr) continue;
+        result[dateStr] = (result[dateStr]||0) + valor;
+      }
+      salvarResultado(result);
+    }
+
+    if(file.name.toLowerCase().endsWith('.csv')) {
+      try {
+        const text = await file.text();
+        const lines = text.split('\n').map(l=>l.replace('\r','')).filter(l=>l.trim());
+        if(lines.length < 2) { setErro('CSV vazio.'); setLoading(false); return; }
+        const sep = lines[0].indexOf(';') >= 0 ? ';' : ',';
+        const header = lines[0].split(sep).map(h=>h.split('').filter(c=>c!=='"').join('').toUpperCase().trim());
+        let colData = header.findIndex(h=>h.includes('DATA')||h.includes('DATE'));
+        let colValor = header.findIndex(h=>
+          h.includes('TOTAL')||h.includes('VALOR')||h.includes('VENDIDO')||
+          h.includes('AMOUNT')||h.includes('BRUTO')||h.includes('LIQUIDO')
+        );
+        if(colData<0) colData=0;
+        if(colValor<0) colValor=1;
+        const result = {};
+        for(let i=1;i<lines.length;i++){
+          const row = lines[i].split(sep).map(c=>c.split('').filter(x=>x!=='"').join('').trim());
+          const dateStr = parseDate(row[colData]);
+          const valor = parseValor(row[colValor]);
+          if(!dateStr) continue;
+          result[dateStr] = (result[dateStr]||0) + valor;
+        }
+        salvarResultado(result);
+      } catch(err) { setErro('Erro ao ler CSV: '+err.message); setLoading(false); }
+      return;
+    }
+
+    try {
+      const buf = await file.arrayBuffer();
+      if(window.XLSX) {
+        processXLSX(window.XLSX, new Uint8Array(buf));
+      } else {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = () => processXLSX(window.XLSX, new Uint8Array(buf));
+        script.onerror = () => { setErro('Nao foi possivel carregar a biblioteca XLS. Tente CSV.'); setLoading(false); };
+        document.head.appendChild(script);
+      }
+    } catch(err) { setErro('Erro ao ler arquivo: '+err.message); setLoading(false); }
+  }
+
+  function limpar() {
+    const semMes = Object.fromEntries(
+      Object.entries(xlsData || {}).filter(([d]) => !(d || '').startsWith(mes))
+    );
+    setXlsData(semMes);
+    setFileName('');
+    setErro('');
+    saveStone(semMes);
+    setLS("stoneName", "");
+  }
+
+  return (
+    <div>
+      <div className="pg-hdr"><div className="pg-title">☑️ Conferência Maquininha</div></div>
+      <p style={{fontSize:14,color:'#6b7280',marginBottom:16}}>Faça upload do relatório da maquininha e o sistema compara automaticamente com as vendas registradas por dia.</p>
+
+      <div className="card mb4">
+        <div style={{fontSize:14,fontWeight:700,marginBottom:10}}>Mês da conferência</div>
+        <input
+          className="df-in"
+          style={{width:'100%',marginBottom:12}}
+          type="month"
+          value={mes}
+          onChange={e=>setMes(e.target.value)}
+        />
+
+        <div style={{fontSize:14,fontWeight:700,marginBottom:10}}>Upload do relatório da maquininha (.xlsx, .xls, .csv)</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
+          <label style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'9px 12px',border:'1.5px solid #d1d5db',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer',background:'#fff',color:'#374151'}}>
+            📂 Escolher Arquivo
+            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} style={{display:'none'}}/>
+          </label>
+          <button className="btn btn-o btn-sm" style={{justifyContent:'center'}} onClick={limpar}>✕ Limpar mês</button>
+        </div>
+        {loading && <div style={{fontSize:13,color:'#2563eb',marginBottom:6}}>⏳ Lendo arquivo...</div>}
+        {fileName && !loading && !erro && (
+          <div style={{fontSize:13,color:'#16a34a',marginBottom:6}}>
+            ✅ {fileName} — {Object.keys(xlsMes).length} dias neste mês
+            <span style={{marginLeft:8,fontSize:12,color:'#6b7280'}}>💾 salvo automaticamente</span>
+          </div>
+        )}
+        {erro && <div style={{fontSize:13,color:'#dc2626',marginBottom:6}}>⚠️ {erro}</div>}
+        <div style={{fontSize:12,color:'#6b7280'}}>O arquivo precisa ter colunas <b>DATA</b> e <b>TOTAL VENDIDO</b> (ou similar).</div>
+      </div>
+
+      <div className="sg mb4">
+        <div className="sc c-navy"><div className="sc-lbl">💵 Total Vendas (Sistema)</div><div className="sc-val">{R(totalSys)}</div></div>
+        <div className="sc c-blue"><div className="sc-lbl">💳 Maquininha (XLS)</div><div className="sc-val">{R(totalXls)}</div></div>
+        <div className="sc c-green"><div className="sc-lbl">💵 Dinheiro Esperado</div><div className="sc-val">{R(totalSys-totalXls)}</div></div>
+        <div className="sc c-purple"><div className="sc-lbl">🔒 Declarado Fechamento</div><div className="sc-val">{R(totalDecl)}</div></div>
+      </div>
+
+      <div className="sec">
+        <div className="sec-hdr"><div className="sec-ttl">📅 Conferência por Dia — {dates.length} dias</div></div>
+        <div className="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th style={{color:'#2563eb'}}>Declarado Fechamento</th>
+                <th>Maquininha (XLS)</th>
+                <th style={{color:'#16a34a'}}>Dinheiro Esperado</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>{dates.length?dates.map(d=>{
+              const t=salesMes.filter(s=>s.date===d).reduce((a,s)=>a+s.total,0);
+              const c=closingsMes.find(x=>x.date===d);
+              const xls=xlsMes[d]||0;
+              const din=t-(c?.maquina||0);
+              const diff = xls ? (c?.maquina||0) - xls : 0;
+              const diverge = xls && Math.abs(diff) > 0.01;
+              return <tr key={d} style={diverge?{background:'#fefce8'}:(!c?{background:'#f9fafb'}:{})}>
+                <td>{fmtDateShort(d)}</td>
+                <td className="tb fw">{c?R(c.maquina):<i style={{color:'#9ca3af'}}>sem fechamento</i>}</td>
+                <td className={diverge?'tr fw':'fw'}>{xls?R(xls):<span style={{color:'#9ca3af'}}>—</span>}</td>
+                <td className={"fw "+(din<0?'tr':'tg')}>{R(din)}</td>
+                <td>{!xls
+                  ? <span style={{fontSize:13,color:'#9ca3af'}}>—</span>
+                  : diverge
+                    ? <span style={{background:'#ef4444',color:'#fff',padding:'5px 10px',borderRadius:8,fontSize:12,fontWeight:700,whiteSpace:'nowrap'}}>⚠ DIVERGE {R(diff)}</span>
+                    : <span style={{background:'#16a34a',color:'#fff',padding:'5px 10px',borderRadius:8,fontSize:12,fontWeight:700}}>✓ OK</span>
+                }</td>
+              </tr>;
+            }):<tr><td colSpan="5" style={{textAlign:'center',padding:40,color:'#9ca3af'}}>Nenhum dado neste mês.</td></tr>}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}) {
   const [xlsData, setXlsData] = useState(() => getStone());
   const [fileName, setFileName] = useState('Stone - abril 2026');
   const [erro, setErro] = useState('');
