@@ -558,6 +558,58 @@ function Baixa({refresh}) {
           <input className="fi" value={obs} onChange={e=>setObs(e.target.value)} placeholder="Ex: lote 1234, geladeira quebrou..."/></div>
         <button className="btn btn-d btn-full" onClick={save}>↓ Registrar Baixa</button>
       </div>
+     {(() => {
+  const baixas = db.moves.filter(m=>m.type==='baixa').slice().reverse().slice(0,30);
+  if(!baixas.length) return null;
+
+  return (
+    <div className="sec">
+      <div className="sec-hdr">
+        <div className="sec-ttl">📋 Últimas Baixas</div>
+      </div>
+
+      <div className="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Produto</th>
+              <th>Qtd</th>
+              <th>Motivo</th>
+              <th>Obs</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {baixas.map(m=>(
+              <tr key={m.id}>
+                <td>{fmtDateShort(m.date)}</td>
+                <td>{m.produto}</td>
+                <td className="fw">{m.qtd}</td>
+                <td>{m.motivo || '—'}</td>
+                <td className="tgr tsm">{m.obs || '—'}</td>
+                <td>
+                  <button
+                    className="btn btn-do btn-ico"
+                    title="Apagar"
+                    onClick={()=>{
+                      if(!window.confirm('Apagar esta baixa?')) return;
+                      db.moves = db.moves.filter(x=>x.id!==m.id);
+                      refresh();
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+})()}                                                             
     </div>
   );
 }
