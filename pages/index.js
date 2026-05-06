@@ -11,8 +11,30 @@ function getLS(key, fallback) {
   if(typeof window === 'undefined') return fallback
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback } catch { return fallback }
 }
+async function syncSupabase(key, value) {
+  try {
+    if (!supabase) return;
+
+    if (['products', 'sales', 'moves', 'closings'].includes(key)) {
+      const rows = Array.isArray(value) ? value : [];
+
+      for (const item of rows) {
+        await supabase
+          .from(key)
+          .upsert(item, { onConflict: 'id' });
+      }
+    }
+  } catch (err) {
+    console.log('Erro ao sincronizar Supabase:', err);
+  }
+}
+
 function setLS(key, value) {
-  if(typeof window !== 'undefined') localStorage.setItem(key, JSON.stringify(value))
+  if(typeof window !== 'undefined') {
+    localStorage.setItem(key, JSON.stringify(value));
+    syncSupabase(key, value);
+  }
+}
 }
 function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36) }
 function money(n) { return Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) }
