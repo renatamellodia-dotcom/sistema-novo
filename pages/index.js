@@ -159,7 +159,10 @@ const db = {
 const getStone = () => getLS('stoneData', preloadStone)
 const saveStone = (v) => setLS('stoneData', v)
 const getContagens = () => getLS('contagensMes', {})
-const saveContagens = (v) => setLS('contagensMes', v)
+const saveContagens = (v) => {
+  setLS('contagensMes', v)
+  fbSet('contagensMes', v)
+}
 
 const NAV = [
   {id:'dashboard',  label:'Dashboard'},
