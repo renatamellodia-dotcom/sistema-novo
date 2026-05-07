@@ -38,7 +38,6 @@ function setLS(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
   }
 }
-}
 function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36) }
 function money(n) { return Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) }
 function today() { return new Date().toISOString().slice(0,10) }
