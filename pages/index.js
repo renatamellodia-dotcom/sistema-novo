@@ -21,7 +21,7 @@ async function syncSupabase(key, value) {
       for (const item of rows) {
       const { error } = await supabase
   .from(key)
-  .upsert(item, { onConflict: 'id' });
+.insert(item);
 
 if (error) {
   console.log('Erro Supabase:', key, item, error);
