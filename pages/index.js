@@ -1308,13 +1308,18 @@ function calcSistema(id) {
     setSaved(false);
   }
 
-  function salvar() {
-    const ct = getContagens();
-    ct[mes] = {...contagem};
-    saveContagens(ct);
-    setSaved(true);
-    setTimeout(()=>setSaved(false), 3000);
-  }
+ function salvar() {
+  const ct = getContagens();
+
+  ct[mes] = {
+    contagem: {...contagem},
+    snapshot: divergencias
+  };
+
+  saveContagens(ct);
+  setSaved(true);
+  setTimeout(()=>setSaved(false), 3000);
+}
 
   function carregarMes(m) {
     setMes(m);
