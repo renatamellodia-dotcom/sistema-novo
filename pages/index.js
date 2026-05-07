@@ -19,9 +19,13 @@ async function syncSupabase(key, value) {
       const rows = Array.isArray(value) ? value : [];
 
       for (const item of rows) {
-        await supabase
-          .from(key)
-          .upsert(item, { onConflict: 'id' });
+      const { error } = await supabase
+  .from(key)
+  .upsert(item, { onConflict: 'id' });
+
+if (error) {
+  console.log('Erro Supabase:', key, item, error);
+}
       }
     }
   } catch (err) {
