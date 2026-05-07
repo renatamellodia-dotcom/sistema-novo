@@ -33,10 +33,10 @@ if (error) {
   }
 }
 
-async function setLS(key, value) {
+function setLS(key, value) {
   if(typeof window !== 'undefined') {
     localStorage.setItem(key, JSON.stringify(value));
-   await syncSupabase(key, value);
+    syncSupabase(key, value);
   }
 }
 }
