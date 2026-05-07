@@ -115,7 +115,7 @@ smartInit()
 
 // ─── Firebase REST + localStorage DB ─────────────────────────────────────────
 
-const FB_URL = 'https://sistema-complexo-9dc5a-default-rtdb.firebaseio.com'
+const FB_URL = 'https://sistema-complexo-9dc5a-default-rtdb.firebaseio.com/'
 
 async function fbSet(key, value) {
   try {
