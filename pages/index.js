@@ -1313,7 +1313,7 @@ function calcSistema(id) {
 
   ct[mes] = {
     contagem: {...contagem},
-    snapshot: divergencias
+    snapshot: JSON.parse(JSON.stringify(divergencias))
   };
 
   saveContagens(ct);
