@@ -1279,13 +1279,29 @@ function EstoqueFinal({refresh}) {
   const [saved, setSaved] = useState(false);
 
   const products = db.products.filter(p=>p.ativo);
+function fimDoMes(ym) {
+  const [y,m] = ym.split('-').map(Number);
+  const ultimoDia = new Date(y, m, 0).getDate();
+  return `${y}-${String(m).padStart(2,'0')}-${String(ultimoDia).padStart(2,'0')}`;
+}
 
-  function calcSistema(id) {
-    const ent = db.moves.filter(m=>m.productId===id&&m.type==='entrada').reduce((a,m)=>a+m.qtd,0);
-    const bai = db.moves.filter(m=>m.productId===id&&m.type==='baixa').reduce((a,m)=>a+m.qtd,0);
-    const sai = db.sales.filter(s=>s.productId===id).reduce((a,s)=>a+s.qtd,0);
-    return ent - sai - bai;
-  }
+function calcSistema(id) {
+  const limite = fimDoMes(mes);
+
+  const ent = db.moves
+    .filter(m => m.productId === id && m.type === 'entrada' && (!m.date || m.date <= limite))
+    .reduce((a,m)=>a+m.qtd,0);
+
+  const bai = db.moves
+    .filter(m => m.productId === id && m.type === 'baixa' && (!m.date || m.date <= limite))
+    .reduce((a,m)=>a+m.qtd,0);
+
+  const sai = db.sales
+    .filter(s => s.productId === id && (!s.date || s.date <= limite))
+    .reduce((a,s)=>a+s.qtd,0);
+
+  return ent - sai - bai;
+}
 
   function setQtd(id, val) {
     setContagem(prev => ({...prev, [id]: val === '' ? '' : Number(val)}));
