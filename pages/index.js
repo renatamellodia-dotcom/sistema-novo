@@ -1321,11 +1321,12 @@ function calcSistema(id) {
   setTimeout(()=>setSaved(false), 3000);
 }
 
-  function carregarMes(m) {
-    setMes(m);
-    setContagem(getContagens()[m] || {});
-    setSaved(false);
-  }
+function carregarMes(m) {
+  setMes(m);
+  const dados = getContagens()[m] || {};
+  setContagem(dados.contagem || dados || {});
+  setSaved(false);
+}
 
  const dadosMes = getContagens()[mes] || {};
 
