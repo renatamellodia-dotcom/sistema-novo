@@ -1327,13 +1327,21 @@ function calcSistema(id) {
     setSaved(false);
   }
 
-  const divergencias = products.map(p => {
+ const dadosMes = getContagens()[mes] || {};
+
+const divergencias =
+  dadosMes.snapshot ||
+  products.map(p => {
     const sistema = calcSistema(p.id);
-    const contado = contagem[p.id] !== undefined && contagem[p.id] !== '' ? Number(contagem[p.id]) : null;
-    const diff = contado !== null ? contado - sistema : null;
-    const valor = diff !== null ? diff * p.preco : null;
+    const contado = contagem[p.id] !== undefined && contagem[p.id] !== ''
+      ? Number(contagem[p.id])
+      : null;
+
+    const diff = contado != null ? contado - sistema : null;
+    const valor = diff != null ? diff * p.preco : null;
+
     return { p, sistema, contado, diff, valor };
-  }).filter(x => x.diff !== null && x.diff !== 0);
+  }).filter(x => x.diff != null && x.diff !== 0);
 
   const totalDesfalque = divergencias.filter(x=>x.valor<0).reduce((a,x)=>a+x.valor,0);
   const totalSobra = divergencias.filter(x=>x.valor>0).reduce((a,x)=>a+x.valor,0);
