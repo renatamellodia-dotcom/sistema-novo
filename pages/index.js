@@ -16,23 +16,19 @@ async function syncSupabase(key, value) {
     if (!supabase) return;
 
     if (['products', 'sales', 'moves', 'closings'].includes(key)) {
+
       const rows = Array.isArray(value) ? value : [];
 
       for (const item of rows) {
-      const { error } = await supabase
-  .from(key)
-.insert(item);
-
-if (error) {
-  console.log('Erro Supabase:', key, item, error);
-}
+        await supabase
+          .from(key)
+          .upsert(item, { onConflict: 'id' });
       }
     }
   } catch (err) {
     console.log('Erro ao sincronizar Supabase:', err);
   }
 }
-
 function setLS(key, value) {
   if(typeof window !== 'undefined') {
     localStorage.setItem(key, JSON.stringify(value));
