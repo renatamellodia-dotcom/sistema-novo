@@ -32,8 +32,6 @@ async function syncSupabase(key, value) {
 function setLS(key, value) {
   if(typeof window !== 'undefined') {
     localStorage.setItem(key, JSON.stringify(value));
-    console.log('CHAMOU setLS:', key);
-    syncSupabase(key, value);
   }
 }
 function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36) }
