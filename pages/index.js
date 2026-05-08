@@ -772,8 +772,8 @@ function Caixa({nav, refresh, tick}) {
 
 function Relatorios({tick}) {
   const [from,setFrom]=useState('2026-04-01');
-  const [to,setTo]=useState(todayStr());
-  const [applied,setApplied]=useState({from:'2026-04-01',to:todayStr()});
+  const [to,setTo]=useState('2026-04-30');
+  const [applied,setApplied]=useState({from:'2026-04-01',to:'2026-04-30'});
 
   const period=db.sales.filter(s=>s.date>=applied.from&&s.date<=applied.to);
   const total=period.reduce((a,s)=>a+s.total,0);
