@@ -1314,10 +1314,12 @@ function calcSistema(id) {
  function salvar() {
   const ct = getContagens();
 
-  ct[mes] = {
-    contagem: {...contagem},
-    snapshot: JSON.parse(JSON.stringify(divergencias))
-  };
+ct[mes] = {
+  contagem: {...contagem},
+  snapshot: Object.keys(contagem).length
+    ? JSON.parse(JSON.stringify(divergencias))
+    : []
+};
 
   saveContagens(ct);
   setSaved(true);
