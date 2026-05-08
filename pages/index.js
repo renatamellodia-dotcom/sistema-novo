@@ -1328,6 +1328,7 @@ function carregarMes(m) {
   setMes(m);
   const dados = getContagens()[m] || {};
   setContagem(dados.contagem || dados || {});
+  if(!dados.contagem) setContagem({})
   setSaved(false);
 }
 
