@@ -158,7 +158,7 @@ const db = {
 }
 const getStone = () => getLS('stoneData', preloadStone)
 const saveStone = (v) => setLS('stoneData', v)
-const getContagens = () => getLS('contagensMes', {})
+const getContagens = () => db.contagensMes || getLS('contagensMes', {})
 const saveContagens = (v) => {
   setLS('contagensMes', v)
   fbSet('contagensMes', v)
