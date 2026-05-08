@@ -136,13 +136,14 @@ async function fbGet(key) {
 
 async function syncFromFirebase() {
   if(typeof window === 'undefined') return
-  const [sales, products, moves, closings] = await Promise.all([
-    fbGet('sales'), fbGet('products'), fbGet('moves'), fbGet('closings')
+  const [sales, products, moves, closings,contagensMes] = await Promise.all([
+    fbGet('sales'), fbGet('products'), fbGet('moves'), fbGet('closings'), fbGet('contagensMes')
   ])
   if(sales && sales.length) setLS('sales', sales)
   if(products && products.length) setLS('products', products)
   if(moves && moves.length) setLS('moves', moves)
   if(closings && closings.length) setLS('closings', closings)
+  if(contagensMes) setLS('contagensMes', contagensMes)
 }
 
 const db = {
