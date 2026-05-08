@@ -125,13 +125,12 @@ async function fbSet(key, value) {
     })
   } catch(e) {}
 }
-
 async function fbGet(key) {
   try {
     const r = await fetch(FB_URL + '/' + key + '.json')
     const data = await r.json()
     if(!data) return null
-    return Array.isArray(data) ? data : Object.values(data)
+   return data
   } catch(e) { return null }
 }
 
